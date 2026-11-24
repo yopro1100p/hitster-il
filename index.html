@@ -256,7 +256,7 @@ async function startSong(n, auto){
     try { if (await spotifyEngine.prepare(song)) engine = spotifyEngine; }
     catch(e){ console.warn('spotify', e); }
   }
-  if (!engine) { if (!song.v.length) { setStatus('השיר לא נמצא ב-Spotify ואין קישור יוטיוב'); return; }
+  if (!engine) { if (!song.v.length) { setStatus(SP.connected() ? 'השיר לא נמצא ב-Spotify ואין קישור יוטיוב' : 'לשיר הזה צריך Spotify — התחבר בכפתור למעלה'); return; }
                  await youtubeEngine.prepare(song); engine = youtubeEngine; }
   $('ansSrc').textContent = engine.label();
   if (auto) begin();

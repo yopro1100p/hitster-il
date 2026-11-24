@@ -56,8 +56,7 @@ async function loadSongs() {
     const s = { n: parseInt(n, 10), y: parseInt(y, 10), t, a, v: youtubeIds(yt),
                 start: (start ?? '') === '' ? null : Number(start), sp: spotifyId(sp) };
     if (!s.n || !s.y || !s.t) problems.push(`שורה ${k + 2}: חסר מספר/שנה/שם`);
-    else if (!s.v.length && !s.sp) problems.push(`שורה ${k + 2}: אין קישור יוטיוב או ספוטיפיי`);
-    else songs.push(s);
+    else songs.push(s);   // בלי קישורים — יחופש אוטומטית ב-Spotify לפי שם ומבצע
   });
   const seen = new Set();
   songs.forEach(s => { if (seen.has(s.n)) problems.push(`מספר קלף ${s.n} מופיע פעמיים`); seen.add(s.n); });
