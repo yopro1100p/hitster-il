@@ -65,12 +65,26 @@
   #test td,#test th{border-bottom:1px solid var(--line);padding:6px;text-align:right}
   .ok{color:#4ade80}.bad{color:#f87171}.wait{color:var(--muted)}
   #testyt{position:fixed;left:-9999px;top:0;width:320px;height:180px}
+
+  .pills{display:flex;gap:8px;align-items:center}
+  #spBtn{padding:4px 12px;font-size:14px;border-radius:999px;background:transparent;color:var(--muted)}
+  #spBtn.on{color:#1ed760;border-color:#1ed760}
+  #sheet{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:20;align-items:flex-end;justify-content:center}
+  #sheet .box{width:100%;max-width:440px;background:var(--panel);border-radius:22px 22px 0 0;padding:20px 16px max(20px,env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:10px}
+  #sheet h3{margin:0 0 4px}
+  #sheet .seg{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  #sheet .seg button.sel{border-color:#1ed760;color:#1ed760}
+  #sheet .note{font-size:13px;color:var(--muted);line-height:1.5}
+  .green{background:#1ed760!important;color:#0d0b14!important;border:0!important;font-weight:800}
+  #test .btns{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
+  #test .btns button{flex:1;min-width:180px}
+  .src{font-size:12px;color:var(--muted)}
 </style>
 </head>
 <body>
 <header>
   <div class="brand">פסקול <span>הזמן</span></div>
-  <div class="cardno" id="cardno">—</div>
+  <div class="pills"><button id="spBtn">Spotify</button><div class="cardno" id="cardno">—</div></div>
 </header>
 
 <main id="game">
@@ -86,7 +100,7 @@
     <button id="moreBtn" disabled></button>
   </div>
   <button id="revealBtn" disabled>גלה תשובה</button>
-  <div class="answer" id="answer"><div class="y" id="ansYear"></div><div class="t" id="ansTitle"></div><div class="a" id="ansArtist"></div></div>
+  <div class="answer" id="answer"><div class="y" id="ansYear"></div><div class="t" id="ansTitle"></div><div class="a" id="ansArtist"></div><div class="src" id="ansSrc"></div></div>
 
   <button id="scanBtn" class="main">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"/><path d="M7 12h10"/></svg>
@@ -100,109 +114,198 @@
   <button id="scanClose">ביטול</button>
 </div>
 
+<div id="sheet"><div class="box">
+  <h3>Spotify</h3>
+  <div id="spOff">
+    <p class="note">התחברות לחשבון Spotify Premium מנגנת את השירים בלי פרסומות. שיר שלא יימצא ב-Spotify יתנגן מיוטיוב.</p>
+    <button id="spLogin" class="green" style="width:100%">התחבר ל-Spotify</button>
+  </div>
+  <div id="spOn">
+    <p class="note">איפה לנגן?</p>
+    <div class="seg"><button id="outBrowser">בדפדפן הזה</button><button id="outApp">באפליקציית Spotify</button></div>
+    <p class="note">"בדפדפן" לא דורש את האפליקציה ולא מציג את שם השיר בהתראות. אם הוא לא עובד בטלפון (בעיקר באייפון), בחרו "באפליקציה" והשאירו את Spotify פתוחה ברקע (או מחוברת לרמקול) — שם השיר יופיע בהתראה של Spotify.</p>
+    <button id="spLogout" style="width:100%">התנתק</button>
+  </div>
+  <button id="sheetClose" style="width:100%">סגור</button>
+</div></div>
+
 <section id="test">
-  <h2>בדיקת סרטונים</h2>
-  <p class="hint" style="color:var(--muted)">מנגן כל סרטון בהשתקה ומסמן אילו חסומים להטמעה. העמוד חושף את כל התשובות.</p>
+  <h2>בדיקת שירים</h2>
+  <p class="note" style="color:var(--muted)">העמוד חושף את כל התשובות.</p>
   <p id="csvProblems" class="bad"></p>
-  <button id="testStart" style="width:100%;background:var(--pink);border:0;font-weight:800">התחל בדיקה</button>
+  <div class="btns">
+    <button id="spTest" class="green">בדוק התאמות ב-Spotify</button>
+    <button id="spCsv" disabled>הורד songs.csv עם קישורי Spotify</button>
+    <button id="testStart">בדוק סרטוני יוטיוב</button>
+  </div>
   <p id="testSummary" class="status"></p>
-  <table><thead><tr><th>#</th><th>שנה</th><th>שיר</th><th>מבצע</th><th>סרטון</th><th>מצב</th></tr></thead><tbody id="testBody"></tbody></table>
+  <table><thead><tr><th>#</th><th>שנה</th><th>שיר</th><th>מבצע</th><th>תוצאה</th><th>מצב</th></tr></thead><tbody id="testBody"></tbody></table>
   <div id="testyt"></div>
 </section>
 
 <script src="songs.js"></script>
+<script src="spotify.js"></script>
 <script>
 const $ = id => document.getElementById(id);
 const ICON_PLAY = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.5v15l13-7.5z"/></svg>';
 const ICON_PAUSE = '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4.5" width="4" height="15" rx="1"/><rect x="14" y="4.5" width="4" height="15" rx="1"/></svg>';
 let SONGS = [], BY_N = {}, problems = [];
-let player, playerReady = false, song = null, vidIdx = 0, clipStart = 0, clipEnd = 0, ticker = null, began = false, playing = false;
+let song = null, engine = null, clipStart = 0, clipEnd = 0, playing = false, ticker = null;
 
 $('moreBtn').textContent = `+${SETTINGS.extraSeconds} שנ׳`;
-function setStatus(t){ $('status').textContent = t; }
-function setBar(f){ $('bar').style.width = Math.max(0, Math.min(1, f)) * 100 + '%'; }
+const setStatus = t => $('status').textContent = t;
+const setBar = f => $('bar').style.width = Math.max(0, Math.min(1, f)) * 100 + '%';
 function setPlaying(on){
   playing = on;
   $('playBtn').innerHTML = on ? ICON_PAUSE + 'עצור' : ICON_PLAY + 'נגן';
   $('record').classList.toggle('spin', on);
   if (on) $('playBtn').classList.remove('nudge');
+  clearInterval(ticker); ticker = null;
+  if (on) ticker = setInterval(tick, 250);
 }
-function enableControls(on){ ['playBtn','replayBtn','moreBtn','revealBtn'].forEach(id => $(id).disabled = !on); }
+function tick(){
+  const t = engine.position();
+  setBar((t - clipStart) / (clipEnd - clipStart));
+  if (t >= clipEnd){ engine.pause(); setPlaying(false); setStatus('נגמר הקטע — מה השנה?'); }
+}
+const enableControls = on => ['playBtn','replayBtn','moreBtn','revealBtn'].forEach(id => $(id).disabled = !on);
 setPlaying(false);
+const autoStart = len => song.start != null ? song.start : Math.max(0, Math.min(30, Math.floor(len * 0.2)));
 
-/* ---------- YouTube ---------- */
+/* ================= Spotify engine ================= */
+const spotifyEngine = (() => {
+  let track = null, pos = 0, t0 = 0, running = false;
+  SP.onAutoplayFailed = () => { pos = engine === spotifyEngine ? clipStart : pos; running = false; setPlaying(false);
+    setStatus('לחצו נגן'); $('playBtn').classList.add('nudge'); };
+  return {
+    name: 'spotify',
+    async prepare(s){ track = await SP.resolve(s); return !track.notFound; },
+    duration: () => track.durMs / 1000,
+    async playFrom(sec){
+      setStatus('מתחבר ל-Spotify…');
+      try {
+        const d = await SP.playFrom(track.uri, sec);
+        pos = sec; t0 = performance.now(); running = true; setPlaying(true);
+        setStatus(d.browser ? 'מתנגן…' : 'מתנגן ב-' + (d.name || 'Spotify') + '…');
+      } catch(e){
+        running = false; setPlaying(false);
+        if (e.noDevice) setStatus('לא נמצא מכשיר Spotify — פתחו את אפליקציית Spotify או בחרו "בדפדפן"');
+        else if (e.status === 403) setStatus('Spotify סירב לנגן (נדרש Premium?)');
+        else setStatus('שגיאת Spotify: ' + e.message);
+      }
+    },
+    async pause(){ pos = this.position(); running = false; await SP.pause(); },
+    position(){ return running ? pos + (performance.now() - t0) / 1000 : pos; },
+    stop(){ if (running) { running = false; SP.pause(); } },
+    label: () => `Spotify: ${track.name} — ${track.artists}${track.year ? ' (' + track.year + ')' : ''}`,
+  };
+})();
+
+/* ================= YouTube engine ================= */
 const PV = {controls:0, disablekb:1, fs:0, rel:0, iv_load_policy:3, playsinline:1, modestbranding:1};
 function loadYT(){
   if (window.YT && YT.Player) return Promise.resolve();
   return new Promise(res => { window.onYouTubeIframeAPIReady = res;
     const s = document.createElement('script'); s.src = 'https://www.youtube.com/iframe_api'; document.head.appendChild(s); });
 }
-async function ensurePlayer(){
-  if (playerReady) return;
-  await loadYT();
-  await new Promise(res => { player = new YT.Player('yt', {playerVars: PV,
-    events: {onReady: () => { playerReady = true; res(); }, onStateChange, onError}}); });
-}
+const youtubeEngine = (() => {
+  let player = null, ready = null, vidIdx = 0, wantStart = null, s = null;
+  function ensure(){
+    if (ready) return ready;
+    ready = loadYT().then(() => new Promise(res => { player = new YT.Player('yt', {playerVars: PV, events: {
+      onReady: res,
+      onStateChange: e => {
+        if (e.data === YT.PlayerState.PLAYING){
+          if (wantStart === 'auto'){ const d = player.getDuration() || 180; clipStart = autoStart(d); clipEnd = Math.min(d, clipStart + SETTINGS.clipSeconds); wantStart = clipStart; }
+          if (wantStart != null){ if (Math.abs(player.getCurrentTime() - wantStart) > 2) player.seekTo(wantStart, true); wantStart = null; }
+          setPlaying(true); setStatus('מתנגן…');
+        } else if (e.data !== YT.PlayerState.BUFFERING) setPlaying(false);
+      },
+      onError: () => {
+        if (s && vidIdx + 1 < s.v.length){ vidIdx++; setStatus('מנסה מקור חלופי…'); player.loadVideoById(s.v[vidIdx]); }
+        else { setStatus('הסרטון לא זמין. אפשר לגלות תשובה או לסרוק קלף אחר.'); ['playBtn','replayBtn','moreBtn'].forEach(id => $(id).disabled = true); }
+      }}}); }));
+    return ready;
+  }
+  return {
+    name: 'youtube', ensure,
+    async prepare(song){ s = song; vidIdx = 0; await ensure(); return s.v.length > 0; },
+    duration: () => null,                                   // ידוע רק אחרי שמתחיל לנגן
+    async playFrom(sec){ player.seekTo(sec, true); player.playVideo(); },
+    async startAuto(){ wantStart = 'auto'; player.loadVideoById({videoId: s.v[vidIdx]}); },
+    async resume(){ player.playVideo(); },
+    async pause(){ player.pauseVideo(); },
+    position: () => player?.getCurrentTime?.() || 0,
+    stop(){ player?.stopVideo?.(); },
+    label: () => 'יוטיוב',
+  };
+})();
 
+/* ================= Game ================= */
+let started = false;
 async function startSong(n, auto){
-  song = BY_N[n]; vidIdx = 0; began = false;
+  engine?.stop(); setPlaying(false); started = false;
+  song = BY_N[n];
   $('cardno').textContent = 'קלף #' + n;
   $('answer').classList.remove('show');
-  $('ansYear').textContent = song.y; $('ansTitle').textContent = song.t; $('ansArtist').textContent = song.a;
+  $('ansYear').textContent = song.y; $('ansTitle').textContent = song.t; $('ansArtist').textContent = song.a; $('ansSrc').textContent = '';
   $('record').classList.remove('idle'); $('scanBtn').classList.remove('main'); $('scanLabel').textContent = 'סרוק קלף הבא';
   enableControls(true); setBar(0); setStatus('טוען…');
-  await ensurePlayer();
-  loadVideo(auto);
-}
-function loadVideo(auto){
-  const id = song.v[vidIdx];
-  if (auto) {
-    player.loadVideoById({videoId: id});            // מנסה לנגן מיד
-    setTimeout(() => { if (!playing) { setStatus('לחצו נגן'); $('playBtn').classList.add('nudge'); } }, 2500);
-  } else { player.cueVideoById({videoId: id}); setStatus('לחצו נגן'); }
-}
-function onError(){
-  if (song && vidIdx + 1 < song.v.length){ vidIdx++; began = false; setStatus('מנסה מקור חלופי…'); loadVideo(true); }
-  else { setStatus('הסרטון לא זמין. אפשר לגלות תשובה או לסרוק קלף אחר.'); ['playBtn','replayBtn','moreBtn'].forEach(id => $(id).disabled = true); }
-}
-function onStateChange(e){
-  if (e.data === YT.PlayerState.PLAYING){
-    if (!began){
-      began = true;
-      const d = player.getDuration() || 180;
-      clipStart = song.start != null ? song.start : Math.max(0, Math.min(30, Math.floor(d * 0.2)));
-      clipEnd = Math.min(d, clipStart + SETTINGS.clipSeconds);
-      if (Math.abs(player.getCurrentTime() - clipStart) > 2) player.seekTo(clipStart, true);
-    }
-    setPlaying(true); setStatus('מתנגן…'); startTicker();
-  } else if (e.data !== YT.PlayerState.BUFFERING) {
-    setPlaying(false); stopTicker();
-    if (e.data === YT.PlayerState.ENDED) setStatus('השיר נגמר');
+  engine = null;
+  if (SP.connected()) {
+    try { if (await spotifyEngine.prepare(song)) engine = spotifyEngine; }
+    catch(e){ console.warn('spotify', e); }
   }
+  if (!engine) { if (!song.v.length) { setStatus('השיר לא נמצא ב-Spotify ואין קישור יוטיוב'); return; }
+                 await youtubeEngine.prepare(song); engine = youtubeEngine; }
+  $('ansSrc').textContent = engine.label();
+  if (auto) begin();
+  else setStatus('לחצו נגן');
 }
-function startTicker(){
-  stopTicker();
-  ticker = setInterval(() => {
-    const t = player.getCurrentTime();
-    setBar((t - clipStart) / (clipEnd - clipStart));
-    if (t >= clipEnd){ player.pauseVideo(); setStatus('נגמר הקטע — מה השנה?'); }
-  }, 250);
+function begin(){
+  started = true;
+  if (engine === spotifyEngine){
+    const d = engine.duration(); clipStart = autoStart(d); clipEnd = Math.min(d, clipStart + SETTINGS.clipSeconds);
+    engine.playFrom(clipStart);
+  } else engine.startAuto();
+  setTimeout(() => { if (!playing && song) { $('playBtn').classList.add('nudge'); if ($('status').textContent === 'טוען…') setStatus('לחצו נגן'); } }, 3000);
 }
-function stopTicker(){ clearInterval(ticker); ticker = null; }
-
 $('playBtn').onclick = () => {
-  if (!playerReady) return;
-  if (playing) { player.pauseVideo(); setStatus('נעצר'); return; }
-  if (began && player.getCurrentTime() >= clipEnd - 0.3) player.seekTo(clipStart, true);
-  player.playVideo();
+  SP.unlockAudio();
+  if (!engine) return;
+  if (playing) { engine.pause(); setPlaying(false); setStatus('נעצר'); return; }
+  if (!started) return begin();
+  const t = engine.position();
+  const from = (t >= clipEnd - 0.3 || t < clipStart - 1) ? clipStart : t;
+  if (engine === youtubeEngine && from === t) engine.resume(); else engine.playFrom(from);
 };
-$('replayBtn').onclick = () => { player.seekTo(clipStart, true); player.playVideo(); };
-$('moreBtn').onclick = () => { clipEnd = Math.min(player.getDuration() || 1e9, Math.max(clipEnd, player.getCurrentTime()) + SETTINGS.extraSeconds); player.playVideo(); };
+$('replayBtn').onclick = () => { SP.unlockAudio(); if (!started) return begin(); engine.playFrom(clipStart); };
+$('moreBtn').onclick = () => {
+  SP.unlockAudio(); if (!started) return begin();
+  const d = engine.duration() || 1e9;
+  clipEnd = Math.min(d, Math.max(clipEnd, engine.position()) + SETTINGS.extraSeconds);
+  if (!playing) engine === youtubeEngine ? engine.resume() : engine.playFrom(engine.position());
+};
 $('revealBtn').onclick = () => $('answer').classList.add('show');
 
-/* ---------- סורק QR בתוך הדף ---------- */
+/* ================= Spotify settings sheet ================= */
+function refreshSp(){
+  const on = SP.connected();
+  $('spBtn').classList.toggle('on', on); $('spBtn').textContent = on ? 'Spotify ✓' : 'Spotify';
+  $('spOff').style.display = on ? 'none' : ''; $('spOn').style.display = on ? '' : 'none';
+  $('outBrowser').classList.toggle('sel', SP.output === 'browser'); $('outApp').classList.toggle('sel', SP.output === 'app');
+}
+$('spBtn').onclick = () => { refreshSp(); $('sheet').style.display = 'flex'; };
+$('sheetClose').onclick = () => $('sheet').style.display = 'none';
+$('sheet').onclick = e => { if (e.target === $('sheet')) $('sheet').style.display = 'none'; };
+$('spLogin').onclick = () => SP.login();
+$('spLogout').onclick = () => { SP.logout(); refreshSp(); };
+$('outBrowser').onclick = () => { SP.setOutput('browser'); SP.initSDK(); refreshSp(); };
+$('outApp').onclick = () => { SP.setOutput('app'); refreshSp(); };
+
+/* ================= in-page QR scanner ================= */
 let stream = null, scanning = false;
-function cardFromText(t){ const m = String(t).match(/(\d{1,4})\s*$/); return m ? parseInt(m[1], 10) : null; }
+const cardFromText = t => { const m = String(t).match(/(\d{1,4})\s*$/); return m ? parseInt(m[1], 10) : null; };
 async function getDecoder(){
   if ('BarcodeDetector' in window){
     try { const bd = new BarcodeDetector({formats:['qr_code']}); return async v => (await bd.detect(v))[0]?.rawValue; } catch(e){}
@@ -214,8 +317,9 @@ async function getDecoder(){
     x.drawImage(v, 0, 0); const r = jsQR(x.getImageData(0, 0, c.width, c.height).data, c.width, c.height); return r && r.data; };
 }
 async function openScanner(){
-  ensurePlayer();                                   // מכין את הנגן בזמן שהמצלמה נפתחת
-  if (playing) player.pauseVideo();
+  SP.unlockAudio();
+  if (!SP.connected()) youtubeEngine.ensure();
+  if (playing) { engine.pause(); setPlaying(false); }
   try { stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}}); }
   catch(e){ setStatus('אין גישה למצלמה — אפשר לסרוק עם אפליקציית המצלמה של הטלפון'); return; }
   $('scanner').style.display = 'flex'; const v = $('cam'); v.srcObject = stream; await v.play();
@@ -231,15 +335,44 @@ async function openScanner(){
 function closeScanner(){ scanning = false; $('scanner').style.display = 'none'; stream?.getTracks().forEach(t => t.stop()); stream = null; }
 $('scanBtn').onclick = openScanner; $('scanClose').onclick = closeScanner;
 
-/* ---------- דף בדיקה (#test) ---------- */
-async function runTests(){
-  $('testStart').disabled = true; await loadYT();
-  const rows = []; SONGS.slice().sort((a,b) => a.y - b.y).forEach(s => s.v.forEach((v,i) => rows.push({s, v, i})));
+/* ================= test page (#test) ================= */
+function table(rows){
   const body = $('testBody'); body.innerHTML = '';
   rows.forEach(r => { const tr = document.createElement('tr');
-    tr.innerHTML = `<td>${r.s.n}</td><td>${r.s.y}</td><td>${r.s.t}</td><td>${r.s.a}</td>
-      <td><a href="https://youtu.be/${r.v}" target="_blank" style="color:var(--cyan)">${r.i ? 'גיבוי' : 'ראשי'}</a></td><td class="wait">…</td>`;
-    r.cell = tr.lastElementChild; body.appendChild(tr); });
+    tr.innerHTML = `<td>${r.s.n}</td><td>${r.s.y}</td><td>${r.s.t}</td><td>${r.s.a}</td><td class="src"></td><td class="wait">…</td>`;
+    r.info = tr.children[4]; r.cell = tr.children[5]; body.appendChild(tr); });
+}
+let spResults = {};
+$('spTest').onclick = async () => {
+  if (!SP.connected()) { SP.login(); return; }
+  $('spTest').disabled = true;
+  const rows = SONGS.slice().sort((a,b) => a.y - b.y).map(s => ({s})); table(rows);
+  let nf = 0, warn = 0;
+  for (const r of rows){
+    try {
+      const m = await SP.resolve(r.s, {fresh: true}); spResults[r.s.n] = m;
+      if (m.notFound){ nf++; r.cell.textContent = '✗ לא נמצא' + (r.s.v.length ? ' (יתנגן מיוטיוב)' : ''); r.cell.className = 'bad'; }
+      else {
+        r.info.innerHTML = `<a href="https://open.spotify.com/track/${m.id}" target="_blank" style="color:#1ed760">${m.name}</a> — ${m.artists} (${m.year ?? '?'})`;
+        const off = m.year && Math.abs(m.year - r.s.y) > 3;
+        r.cell.textContent = off ? '⚠ שנת הגרסה שונה — לבדוק' : '✓'; r.cell.className = off ? 'bad' : 'ok'; if (off) warn++;
+      }
+    } catch(e){ r.cell.textContent = '✗ ' + e.message; r.cell.className = 'bad'; nf++; }
+  }
+  $('testSummary').textContent = `${SONGS.length} שירים: ${SONGS.length - nf} נמצאו ב-Spotify, ${nf} לא נמצאו, ${warn} לבדיקה ידנית (שנת הגרסה רחוקה מהשנה על הקלף — כנראה הקלטה מאוחרת או אוסף; זה לא משנה את השנה על הקלף).`;
+  $('spCsv').disabled = false; $('spTest').disabled = false;
+};
+$('spCsv').onclick = async () => {
+  const q = v => /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
+  const lines = ['מספר קלף,שנה,שם השיר,מבצע,קישורי יוטיוב,שנייה להתחלה,קישור ספוטיפיי'];
+  SONGS.slice().sort((a,b) => a.y - b.y).forEach(s => { const m = spResults[s.n];
+    lines.push([s.n, s.y, s.t, s.a, s.v.join(' '), s.start ?? '', s.sp ? 'https://open.spotify.com/track/' + s.sp : (m && !m.notFound ? 'https://open.spotify.com/track/' + m.id : '')].map(x => q(String(x))).join(',')); });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([lines.join('\n') + '\n'], {type:'text/csv'})); a.download = 'songs.csv'; a.click();
+};
+$('testStart').onclick = async () => {
+  $('testStart').disabled = true; await loadYT();
+  const rows = []; SONGS.slice().sort((a,b) => a.y - b.y).forEach(s => s.v.forEach((v,i) => rows.push({s, v, i}))); table(rows);
+  rows.forEach(r => r.info.innerHTML = `<a href="https://youtu.be/${r.v}" target="_blank" style="color:var(--cyan)">${r.i ? 'גיבוי' : 'ראשי'}</a>`);
   let tp, done;
   await new Promise(res => { tp = new YT.Player('testyt', {playerVars:{...PV, mute:1, autoplay:1}, events:{onReady:res,
     onStateChange:e => e.data === YT.PlayerState.PLAYING && done && done('ok'), onError:e => done && done('שגיאה ' + e.data)}}); });
@@ -249,24 +382,28 @@ async function runTests(){
     done = null; tp.stopVideo();
     r.cell.textContent = res === 'ok' ? '✓' : '✗ ' + res; r.cell.className = res === 'ok' ? 'ok' : 'bad'; if (res !== 'ok') bad++;
   }
-  const dead = SONGS.filter(s => rows.filter(r => r.s === s).every(r => r.cell.className === 'bad'));
+  const dead = SONGS.filter(s => rows.filter(r => r.s === s).length && rows.filter(r => r.s === s).every(r => r.cell.className === 'bad'));
   $('testSummary').textContent = `נבדקו ${rows.length} סרטונים, ${bad} נכשלו. שירים בלי אף סרטון עובד: ` + (dead.length ? dead.map(s => '#' + s.n + ' ' + s.t).join(', ') : 'אין 🎉');
-}
-$('testStart').onclick = runTests;
+};
 
-/* ---------- הפעלה ---------- */
+/* ================= boot ================= */
 (async () => {
+  let h = location.hash.slice(1);
+  try { const ret = await SP.handleRedirect(); if (ret != null) h = ret.slice(1); }
+  catch(e){ setStatus('ההתחברות ל-Spotify נכשלה: ' + e.message); }
+  refreshSp();
   try { ({songs: SONGS, problems} = await loadSongs()); }
   catch(e){ setStatus('לא הצלחתי לטעון את songs.csv'); return; }
   BY_N = Object.fromEntries(SONGS.map(s => [s.n, s]));
-  const h = location.hash.slice(1);
   if (h === 'test'){
     $('game').style.display = 'none'; $('test').style.display = 'block'; $('cardno').textContent = SONGS.length + ' שירים';
     $('csvProblems').textContent = problems.join(' · '); return;
   }
+  if (SP.connected() && SP.output === 'browser') SP.initSDK();
   const n = parseInt(h, 10);
-  if (BY_N[n]) startSong(n, true);                  // נכנסו מסריקה במצלמת הטלפון
-  else { setStatus('סרקו קלף כדי להתחיל'); $('cardno').textContent = SONGS.length + ' שירים'; ensurePlayer(); }
+  if (BY_N[n]) startSong(n, true);
+  else { setStatus(SP.connected() ? 'סרקו קלף כדי להתחיל' : 'סרקו קלף כדי להתחיל · מומלץ להתחבר ל-Spotify (למעלה)');
+         $('cardno').textContent = SONGS.length + ' שירים'; if (!SP.connected()) youtubeEngine.ensure(); }
 })();
 </script>
 </body>

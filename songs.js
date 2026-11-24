@@ -1,5 +1,6 @@
 /* טוען את רשימת השירים מ-songs.csv — משותף ל-index.html ול-cards.html.
-   עמודות: מספר קלף, שנה, שם השיר, מבצע, קישורי יוטיוב, שנייה להתחלה (רשות)
+   עמודות: מספר קלף, שנה, שם השיר, מבצע, קישורי יוטיוב, שנייה להתחלה (רשות), קישור ספוטיפיי (רשות)
+   - קישור ספוטיפיי: ריק = האתר מחפש לבד לפי שם ומבצע. מדביקים קישור רק כדי לקבוע גרסה מסוימת.
    - קישורי יוטיוב: קישור מלא או מזהה, אפשר כמה (מופרדים ברווח) — הנוסף משמש גיבוי.
    - שנייה להתחלה: ריק = אוטומטי. */
 
@@ -7,7 +8,14 @@ const SETTINGS = {
   clipSeconds: 30,        // אורך הקטע שמתנגן
   extraSeconds: 15,       // כמה מוסיף הכפתור "+"
   csvFile: 'songs.csv',
+  spotifyClientId: '8c809f5ee337468aafa6d9617754b172',
+  spotifyRedirect: 'https://yopro1100p.github.io/hitster-il/',   // חייב להיות זהה ל-Redirect URI באפליקציית Spotify
 };
+
+function spotifyId(cell) {
+  const m = (cell || '').match(/(?:track[/:])([A-Za-z0-9]{22})/) || (cell || '').trim().match(/^([A-Za-z0-9]{22})$/);
+  return m ? m[1] : null;
+}
 
 function parseCSV(text) {
   const rows = []; let row = [], f = '', i = 0, q = false;
@@ -44,10 +52,11 @@ async function loadSongs() {
   const songs = [], problems = [];
   parseCSV(text).slice(1).forEach((r, k) => {
     if (!r.some(x => x.trim())) return;
-    const [n, y, t, a, yt, start] = r.map(x => (x || '').trim());
+    const [n, y, t, a, yt, start, sp] = r.map(x => (x || '').trim());
     const s = { n: parseInt(n, 10), y: parseInt(y, 10), t, a, v: youtubeIds(yt),
-                start: start === '' ? null : Number(start) };
-    if (!s.n || !s.y || !s.t || !s.v.length) problems.push(`שורה ${k + 2}: חסר מספר/שנה/שם/יוטיוב`);
+                start: (start ?? '') === '' ? null : Number(start), sp: spotifyId(sp) };
+    if (!s.n || !s.y || !s.t) problems.push(`שורה ${k + 2}: חסר מספר/שנה/שם`);
+    else if (!s.v.length && !s.sp) problems.push(`שורה ${k + 2}: אין קישור יוטיוב או ספוטיפיי`);
     else songs.push(s);
   });
   const seen = new Set();
