@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>פסקול הזמן</title>
+<style>
+  :root{
+    --bg:#0d0b14; --panel:#181424; --ink:#f4f1ff; --muted:#a59fc0;
+    --pink:#ff3d8b; --cyan:#22d3ee; --yellow:#ffd23f; --line:#2a2440;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:system-ui,-apple-system,"Segoe UI",Rubik,Arial,sans-serif;-webkit-tap-highlight-color:transparent}
+  body{min-height:100vh;display:flex;flex-direction:column;align-items:center;
+    padding:max(16px,env(safe-area-inset-top)) 16px max(24px,env(safe-area-inset-bottom))}
+  header{width:100%;max-width:440px;display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+  .brand{font-weight:800;letter-spacing:.5px;font-size:20px}
+  .brand span{color:var(--pink)}
+  .cardno{font-size:14px;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:4px 12px}
+  main{width:100%;max-width:440px;display:flex;flex-direction:column;align-items:center;gap:18px}
+
+  /* The record: blurred YouTube player underneath, decorative disc on top */
+  .record{position:relative;width:min(78vw,320px);aspect-ratio:1;border-radius:50%;overflow:hidden;
+    box-shadow:0 0 0 6px #000,0 0 40px rgba(255,61,139,.35),0 0 80px rgba(34,211,238,.15)}
+  #yt{position:absolute;inset:-10%;width:120%;height:120%;filter:blur(22px) saturate(.6) brightness(.55);transform:scale(1.2)}
+  #yt iframe{width:100%;height:100%;border:0}
+  .grooves{position:absolute;inset:0;border-radius:50%;pointer-events:none;
+    background:repeating-radial-gradient(circle at 50% 50%,rgba(0,0,0,.55) 0 2px,rgba(0,0,0,.25) 2px 5px),
+               radial-gradient(circle,rgba(0,0,0,0) 0 30%,rgba(0,0,0,.35) 70%)}
+  .label{position:absolute;inset:34%;border-radius:50%;pointer-events:none;
+    background:conic-gradient(var(--pink),var(--yellow),var(--cyan),var(--pink));
+    display:flex;align-items:center;justify-content:center;font-size:34px;color:#0d0b14;font-weight:900}
+  .label::after{content:"";position:absolute;width:12%;height:12%;border-radius:50%;background:#0d0b14}
+  .spin .grooves,.spin .label{animation:spin 2.4s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  /* tap blockers: keep taps away from YouTube's title / logo links */
+  .block{position:absolute;left:0;right:0;height:24%;z-index:2}
+  .block.top{top:0}.block.bottom{bottom:0}
+
+  .progress{width:100%;height:6px;background:var(--line);border-radius:3px;overflow:hidden}
+  .progress i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--cyan),var(--pink));transition:width .25s linear}
+  .status{min-height:22px;color:var(--muted);font-size:15px;text-align:center}
+
+  .controls{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;width:100%}
+  button{font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:14px;
+    padding:14px 10px;font-size:16px;cursor:pointer}
+  button:active{transform:scale(.97)}
+  button.primary{grid-column:1/-1;background:linear-gradient(90deg,var(--pink),#ff7a59);border:0;font-weight:800;font-size:20px;padding:16px}
+  button.reveal{grid-column:1/-1;background:transparent;border:1px dashed var(--muted);color:var(--muted)}
+  button:disabled{opacity:.4}
+
+  .answer{display:none;width:100%;text-align:center;background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:18px}
+  .answer .y{font-size:64px;font-weight:900;line-height:1;color:var(--yellow)}
+  .answer .t{font-size:22px;font-weight:800;margin-top:8px}
+  .answer .a{font-size:17px;color:var(--muted);margin-top:4px}
+
+  .next{display:flex;gap:8px;width:100%}
+  .next input{flex:1;min-width:0;font:inherit;font-size:18px;text-align:center;background:var(--panel);color:var(--ink);
+    border:1px solid var(--line);border-radius:14px;padding:12px}
+  .next button{white-space:nowrap}
+  .hint{font-size:13px;color:var(--muted);text-align:center;line-height:1.5}
+
+  #scanner{display:none;position:fixed;inset:0;background:#000;z-index:10;flex-direction:column;align-items:center;justify-content:center;gap:16px}
+  #scanner video{width:min(90vw,420px);border-radius:16px}
+  #scanner button{min-width:140px}
+
+  /* test page */
+  #test{display:none;width:100%;max-width:900px}
+  #test table{width:100%;border-collapse:collapse;font-size:14px}
+  #test td,#test th{border-bottom:1px solid var(--line);padding:6px;text-align:right}
+  .ok{color:#4ade80}.bad{color:#f87171}.wait{color:var(--muted)}
+  #testyt{position:fixed;left:-9999px;top:0;width:320px;height:180px}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">פסקול <span>הזמן</span></div>
+  <div class="cardno" id="cardno">—</div>
+</header>
+
+<main id="game">
+  <div class="record" id="record">
+    <div id="yt"></div>
+    <div class="grooves"></div>
+    <div class="label" id="labelIcon">▶</div>
+    <div class="block top"></div><div class="block bottom"></div>
+  </div>
+
+  <div class="progress"><i id="bar"></i></div>
+  <div class="status" id="status">טוען…</div>
+
+  <div class="controls">
+    <button class="primary" id="playBtn" disabled>▶ נגן קטע</button>
+    <button id="replayBtn" disabled>↺ מההתחלה</button>
+    <button id="moreBtn" disabled>+15 שנ׳</button>
+    <button id="pauseBtn" disabled>❚❚ עצור</button>
+    <button class="reveal" id="revealBtn">גלה תשובה</button>
+  </div>
+
+  <div class="answer" id="answer">
+    <div class="y" id="ansYear"></div>
+    <div class="t" id="ansTitle"></div>
+    <div class="a" id="ansArtist"></div>
+  </div>
+
+  <div class="next">
+    <input id="numIn" inputmode="numeric" pattern="[0-9]*" placeholder="מספר קלף">
+    <button id="goBtn">עבור</button>
+    <button id="scanBtn">📷 סרוק</button>
+  </div>
+  <div class="hint">סורקים את הקלף, שומעים קטע מהשיר ומנחשים את השנה.<br>
+    אם הנגינה לא מתחילה בלחיצה על הכפתור, הקישו ישירות על התקליט.</div>
+</main>
+
+<div id="scanner">
+  <video id="cam" playsinline muted></video>
+  <div class="hint" style="color:#fff">כוונו את המצלמה לקוד שעל הקלף</div>
+  <button id="scanClose">ביטול</button>
+</div>
+
+<section id="test">
+  <h2>בדיקת סרטונים</h2>
+  <p class="hint" style="text-align:right">הבדיקה מנגנת כל סרטון לשנייה בהשתקה ומסמנת אילו חסומים להטמעה. עמוד זה חושף את כל התשובות.</p>
+  <button id="testStart" class="primary" style="width:100%">התחל בדיקה</button>
+  <p id="testSummary" class="status"></p>
+  <table><thead><tr><th>#</th><th>שנה</th><th>שיר</th><th>מבצע</th><th>סרטון</th><th>מצב</th></tr></thead><tbody id="testBody"></tbody></table>
+  <div id="testyt"></div>
+</section>
+
+<script>
+const SONGS = [{"n":1,"t":"הימים הארוכים העצובים","a":"אריק איינשטיין","y":1968,"v":["d95X4w5TJk8"]},{"n":2,"t":"סתלבט בקיבוץ","a":"פול טראנק וג'ימבו ג'יי","y":2022,"v":["Pf-Ce9r7i7o"]},{"n":3,"t":"צו קריאה","a":"אריק לביא","y":1967,"v":["yUt9UZs7CEY"]},{"n":4,"t":"גולית","a":"כוורת","y":1975,"v":["36qeh0tebBI","B0xWYu3zasE"]},{"n":5,"t":"זמר נוגה","a":"החלונות הגבוהים","y":1967,"v":["9Cckw2DAwSg","9nkCDDaMEh0"]},{"n":6,"t":"היא כל כך יפה","a":"כוורת","y":1975,"v":["2ZcZpmyBerc","zAaHhoNMXS0"]},{"n":7,"t":"Hurricane","a":"עדן גולן","y":2024,"v":["QV_NQ5F_iXY","lJYn09tuPw4"]},{"n":8,"t":"כבר אחרי חצות","a":"אילנית","y":1968,"v":["P5sGHyMyLBw","u691UVOutA4"]},{"n":9,"t":"אמור שלום","a":"שוקולד מנטה מסטיק","y":1976,"v":["CwDyzz80KKM","oefD35BZsB0"]},{"n":10,"t":"נתתי לה חיי","a":"כוורת","y":1974,"v":["orkXG-xXO-k","KL_il0SQw8s"]},{"n":11,"t":"את ואני והרוח","a":"הפרברים","y":1964,"v":["twyNyXgyIp0","9oHJNHv6Z-c"]},{"n":12,"t":"רק עלה","a":"שלמה ארצי","y":1978,"v":["7qXJqK9AIyk","Eo4qGAtcC2s"]},{"n":13,"t":"בית משוגעים","a":"רן דנקר","y":2021,"v":["PqxUV9xk7T4"]},{"n":14,"t":"לו הייתי (הכל בגלל האהבה)","a":"אריק איינשטיין ויפה ירקוני","y":1966,"v":["W70lvmW0VG0"]},{"n":15,"t":"הורה היאחזות","a":"להקת הנח\"ל","y":1953,"v":["cRy7FyGSE1E","eV0nVxLwaOk"]},{"n":16,"t":"לו יהי","a":"חוה אלברשטיין","y":1973,"v":["Ur6QhQhvIG0","YWeeRjy2sOA"]},{"n":17,"t":"על אם הדרך","a":"חיה ארד ולהקת חיל הים","y":1972,"v":["Xoh_DVe4WcA","rTsslk4wm2c"]},{"n":18,"t":"לצאת מדיכאון","a":"יגל אושרי","y":2023,"v":["9XIZ_T_vg_E","-Kx2IQ6maiI"]},{"n":19,"t":"לילה בחוף אכזיב","a":"שלישיית גשר הירקון","y":1964,"v":["MFrjlagc8rE","C2uD4WIC0JY"]},{"n":20,"t":"כמה טוב שבאת הביתה","a":"אריק איינשטיין","y":1972,"v":["47N5x22hb8g","TeRxLHPCgUs"]},{"n":21,"t":"ויקיפדיה","a":"חנן בן ארי","y":2017,"v":["80GtXgCSYJw"]},{"n":22,"t":"כמו צמח בר","a":"חוה אלברשטיין","y":1975,"v":["R5FaP7_oiqQ","eWDPVMZ_2dI"]},{"n":23,"t":"הסלע האדום","a":"אריק לביא","y":1958,"v":["iogZcBk88dw","VZDT8vsMVIQ"]},{"n":24,"t":"New Day Will Rise","a":"יובל רפאל","y":2025,"v":["Q3BELu4z6-U"]},{"n":25,"t":"גבר הולך לאיבוד","a":"שלמה ארצי","y":1978,"v":["lYSm8GPDrxo","6LNoEB5AAM0"]},{"n":26,"t":"הבלדה על יואל משה סלומון","a":"אריק איינשטיין ושלום חנוך","y":1970,"v":["75uEfnjrNe4","HyAiQQVCaHw"]},{"n":27,"t":"מיליון דולר","a":"נועה קירל ושחר סאול","y":2020,"v":["oQbh5Kvet04","lFMoDtmus8s"]},{"n":28,"t":"אם תרצי","a":"חנן בן ארי","y":2020,"v":["Y-_XAt1OFNI"]},{"n":29,"t":"אני חולם על נעמי","a":"חדוה ודוד","y":1970,"v":["zrDQBle6dDA","8I2eE_Q_9Rw"]},{"n":30,"t":"סוף עונת התפוזים","a":"תמוז","y":1976,"v":["XhnZbD_c2JM","_X_MAbcGMrk"]},{"n":31,"t":"שיר השכונה","a":"התרנגולים","y":1963,"v":["tuPpjQOinGQ","5KPH3UIwNI0"]},{"n":32,"t":"אבשלום","a":"אריק איינשטיין ושלום חנוך","y":1970,"v":["GpZ8xuZ4TY0"]},{"n":33,"t":"מוסיקה","a":"צביקה פיק","y":1978,"v":["lx9-zAZRh1s"]},{"n":34,"t":"אני חדש בארץ","a":"ג'טה לוקה","y":1950,"v":["c6aGq7Hzguc","zzPHwr3il5M"]},{"n":35,"t":"איפה כל החבר'ה","a":"הגשש החיוור","y":1967,"v":["iYfIEBAJJE8"]},{"n":36,"t":"רוצי שמוליק","a":"אריאל זילבר","y":1976,"v":["8yrqZhAuB60","NXRXHiZH1Jw"]},{"n":37,"t":"גבעת התחמושת","a":"להקת פיקוד מרכז","y":1968,"v":["hCTlagdOiDc","NRP_fXiFFqM"]},{"n":38,"t":"עם ישראל חי","a":"אייל גולן","y":2023,"v":["1HgKB4-kQdA","ubFrH85D724"]},{"n":39,"t":"סלסולים","a":"סטטיק ובן אל תבורי","y":2016,"v":["CWLUhqNYRLg","94BIxqTYJzU"]},{"n":40,"t":"יש לי חג","a":"הגשש החיוור","y":1973,"v":["AiKZTDXJbYY"]},{"n":41,"t":"טודו בום","a":"סטטיק ובן אל תבורי","y":2017,"v":["ayOuxyAFNkE","kNng9mbl9wY"]},{"n":42,"t":"בין שני לבבות","a":"אילן ואילנית","y":1970,"v":["d_rn8irbU5Q"]},{"n":43,"t":"מה אברך","a":"רבקה זוהר ולהקת חיל הים","y":1968,"v":["SgpIhwFKQbo","u_pMQ3m-hxg"]},{"n":44,"t":"אי שם","a":"אילנית","y":1973,"v":["PEm4ypTDikw","bfFkBasF57g"]},{"n":45,"t":"את ואני","a":"שלמה ארצי","y":1975,"v":["w5icfxzRL_Y","d3TFI_2G52M"]},{"n":46,"t":"יהיה טוב","a":"דויד ברוזה","y":1977,"v":["t5m31BjDkb8","vUyPWjrKfs0"]},{"n":47,"t":"ירושלים של זהב","a":"שולי נתן","y":1967,"v":["IUxt7faTExY","uz1jnw5uMJs"]},{"n":48,"t":"I.M","a":"מיכאל בן דוד","y":2022,"v":["WNFeohWlA20"]},{"n":49,"t":"חסקה","a":"להקת חיל הים","y":1972,"v":["c3sgHDIBCU0","h5dfeAFke9w"]},{"n":50,"t":"ברית עולם","a":"מתי כספי","y":1976,"v":["6HXft3gwDts","c55tiB8L8Us"]},{"n":51,"t":"אנשי הדממה","a":"להקת חיל הים","y":1970,"v":["MfRkvMiCro4","u4pbfyVfnCs"]},{"n":52,"t":"רוני","a":"גזוז","y":1979,"v":["7m74eKO22qw","UzeWZQnlYWA"]},{"n":53,"t":"שיר המכולת","a":"כוורת","y":1973,"v":["SyT7SpeBy9k","RPMk7rXJCs8"]},{"n":54,"t":"הללויה","a":"גלי עטרי וחלב ודבש","y":1979,"v":["MMICmo6Hj0k","fmrCYl8p15M"]},{"n":55,"t":"Unicorn","a":"נועה קירל","y":2023,"v":["XwPEtD0_mx4"]},{"n":56,"t":"תמיד עולה המנגינה","a":"להקת חיל האוויר","y":1975,"v":["5CjPisRG5aE","xxEfsNjnat0"]},{"n":57,"t":"פרח הלילך","a":"חוה אלברשטיין","y":1967,"v":["GEBMh5Kmyvw","sPRZ3sFalzM"]},{"n":58,"t":"אותך","a":"שלישיית גשר הירקון","y":1964,"v":["y_itwDKSOE4"]},{"n":59,"t":"נאסף תשרי","a":"צביקה פיק","y":1978,"v":["JrlZvIaVPBk","cvNOWxMW8ok"]},{"n":60,"t":"Set Me Free","a":"עדן אלנה","y":2021,"v":["9nss3FsrgJo","br7YP-E1f3Y"]},{"n":61,"t":"כל הכבוד","a":"יהורם גאון","y":1966,"v":["00x-U2mbnr4","DRgJ7mDbPlY"]},{"n":62,"t":"סליחות","a":"יהודית רביץ","y":1977,"v":["k8GZxZOYQK8","DZd_Ik2SNcg"]},{"n":63,"t":"פחד אלוהים","a":"כפיר צפריר","y":2023,"v":["kBLdR1J8Je4","72FTsZw4YHA"]},{"n":64,"t":"שלמים","a":"עידן רפאל חביב","y":2020,"v":["5ejT8FqglLM"]},{"n":65,"t":"היו לילות","a":"אסתר עופרים","y":1961,"v":["neZHpWExqwQ"]},{"n":66,"t":"ונצואלה","a":"בצל ירוק","y":1959,"v":["jAnrhlU5iec","wo4gdNTeez8"]},{"n":67,"t":"פתאום עכשיו פתאום היום","a":"שלמה ארצי","y":1970,"v":["09iWG03hjDk","Ru1K6j1inw0"]},{"n":68,"t":"שיר הרעות","a":"הצ'יזבטרון","y":1948,"v":["BFBL2rntJGY"]},{"n":69,"t":"אני ואתה","a":"אריק איינשטיין","y":1971,"v":["gP6PS-poyMg","PixfMer7J5M"]},{"n":70,"t":"אהבת פועלי הבניין","a":"שלישיית גשר הירקון","y":1964,"v":["ei2FcAMuRAw"]},{"n":71,"t":"אהבתה של תרזה דימון","a":"אילנית","y":1970,"v":["OUAOj74Wwnw","W0OlyEGFdbc"]},{"n":72,"t":"יצאנו אט","a":"אריק איינשטיין","y":1966,"v":["HJC6LGKv2p0","FruDL06WKUg"]},{"n":73,"t":"המגפיים של ברוך","a":"כוורת","y":1973,"v":["IlPHxyw6lwE","BiAoie1f5NI"]},{"n":74,"t":"הולך בטל","a":"תמוז","y":1976,"v":["7KlAYn8118c","k04yj63iEIQ"]},{"n":75,"t":"גלגל ענק","a":"גלי עטרי וחלב ודבש","y":1979,"v":["yD2XqsX6MAE"]},{"n":76,"t":"ערב בא","a":"עליזה קאשי ושמעון בר","y":1960,"v":["HyeFO1E6q74","GGzLi6NwSPw"]},{"n":77,"t":"קום לך אל נינוה","a":"להקת פיקוד מרכז","y":1968,"v":["ngroRxti3LY","INe_FeINbZA"]},{"n":78,"t":"שיר סתיו","a":"אריק לביא","y":1970,"v":["muiCcq70hiE","UNajS6p1ix4"]},{"n":79,"t":"באב אל ואד","a":"יפה ירקוני","y":1949,"v":["6z0VMAiUTmU","QBlQ20s3FBk"]},{"n":80,"t":"חרבו דרבו","a":"נס וסטילה","y":2023,"v":["1rk3n9V-aQs","p4tK9P6sPJA"]},{"n":81,"t":"מרי לו","a":"צביקה פיק","y":1978,"v":["cLj2s5kkxJ0","bbsMP75sPws"]},{"n":82,"t":"שלום לך ארץ נהדרת","a":"יהורם גאון","y":1977,"v":["wdCGoYYrXLU","DgvmC-F5jsE"]},{"n":83,"t":"אהבה היא שיר לשניים","a":"אילנית","y":1977,"v":["vWIbBzaZ96M","fQj804fiYxc"]},{"n":84,"t":"Golden Boy","a":"נדב גדג'","y":2015,"v":["NdxOCTezeTg"]},{"n":85,"t":"היא לא תדע","a":"גזוז","y":1979,"v":["q3-e4FGY3zA","A_KaAdvnKQI"]},{"n":86,"t":"נולדתי לשלום","a":"סקסטה","y":1979,"v":["XZ5qAirQ81g"]},{"n":87,"t":"בשנה הבאה","a":"אילן ואילנית","y":1970,"v":["qWWMPPlyXiY","XYYo00JbCks"]},{"n":88,"t":"מכופף הבננות","a":"אריק איינשטיין","y":1968,"v":["rlj-DZ5ZiFE","7xqL44TbPXM"]},{"n":89,"t":"ימי בנימינה","a":"חוה אלברשטיין","y":1975,"v":["P5z4U0Uypn0"]},{"n":90,"t":"ערב של שושנים","a":"הדודאים","y":1958,"v":["rEdbgHeyncE"]},{"n":91,"t":"למה לי לקחת ללב","a":"אריק איינשטיין ושלום חנוך","y":1970,"v":["PIkk1eGFplc","czmnbI6360U"]},{"n":92,"t":"אבניבי","a":"יזהר כהן ולהקת אלפא-ביתא","y":1978,"v":["IRbj_8JBjc8","KktvvFOKjNE"]},{"n":93,"t":"Toy","a":"נטע","y":2018,"v":["UFZ2F8V9qVk","CziHrYYSyPc"]},{"n":94,"t":"לכבוד הקיץ","a":"גזוז","y":1979,"v":["dadhMPvkjlc"]},{"n":95,"t":"עוד לא אהבתי די","a":"יהורם גאון","y":1977,"v":["V4QSoLFj-NM"]},{"n":96,"t":"ראי רחל ראי (שוב לא נלך)","a":"אריק לביא","y":1967,"v":["YiKwGelfFv0","9HWHtxWogAw"]},{"n":97,"t":"שיר הטלפון","a":"הגשש החיוור","y":1966,"v":["x-vzTRqSBaQ"]},{"n":98,"t":"צריך לצלצל פעמיים","a":"שושנה דמארי","y":1952,"v":["PFVOCBbONYo","PP3KCrOjKG0"]},{"n":99,"t":"שיר לשלום","a":"להקת הנח\"ל","y":1969,"v":["N8gDVr8AseM","d4JyiXsta10"]},{"n":100,"t":"מי זאת","a":"אנה זק","y":2022,"v":["bcuRKDY0Rz0","rqdktvmJbUo"]}];
+const CLIP = 30;          // seconds per clip
+const BY_N = Object.fromEntries(SONGS.map(s => [s.n, s]));
+
+const $ = id => document.getElementById(id);
+let player, song, vidIdx = 0, clipStart = 0, clipEnd = CLIP, ticker = null, ready = false, everPlayed = false;
+
+function parseCard(){
+  const h = location.hash.replace('#','');
+  if (h === 'test') return 'test';
+  const q = new URLSearchParams(location.search).get('n');
+  const n = parseInt(h || q, 10);
+  return BY_N[n] ? n : null;
+}
+
+/* ---------- YouTube ---------- */
+function loadYT(){
+  if (window.YT && YT.Player) return Promise.resolve();
+  return new Promise(res => {
+    window.onYouTubeIframeAPIReady = res;
+    const s = document.createElement('script'); s.src = 'https://www.youtube.com/iframe_api';
+    document.head.appendChild(s);
+  });
+}
+const PV = {controls:0, disablekb:1, fs:0, rel:0, iv_load_policy:3, playsinline:1, modestbranding:1};
+
+async function startGame(n){
+  song = BY_N[n]; vidIdx = 0; everPlayed = false;
+  $('cardno').textContent = 'קלף #' + n;
+  $('answer').style.display = 'none';
+  $('ansYear').textContent = song.y; $('ansTitle').textContent = song.t; $('ansArtist').textContent = song.a;
+  setStatus('טוען…'); setBar(0); enable(false);
+  await loadYT();
+  if (player && ready) { player.cueVideoById({videoId: song.v[0]}); enable(true); setStatus('מוכן — לחצו נגן'); return; }
+  player = new YT.Player('yt', {videoId: song.v[0], playerVars: PV,
+    events: {onReady, onStateChange, onError}});
+}
+function onReady(){ ready = true; enable(true); setStatus('מוכן — לחצו נגן'); }
+function onError(e){
+  // 100 = not found, 101/150 = embedding blocked, 2/5 = bad id / html5 error
+  if (vidIdx + 1 < song.v.length){
+    vidIdx++; everPlayed = false;
+    setStatus('מנסה מקור חלופי…');
+    player.loadVideoById({videoId: song.v[vidIdx]});
+  } else {
+    setStatus('הסרטון לא זמין להטמעה. אפשר לגלות את התשובה או לעבור לקלף אחר.');
+    enable(false); $('revealBtn').disabled = false;
+  }
+}
+function onStateChange(e){
+  const S = YT.PlayerState;
+  if (e.data === S.PLAYING){
+    if (!everPlayed){
+      everPlayed = true;
+      const d = player.getDuration() || 180;
+      clipStart = Math.max(0, Math.min(30, Math.floor(d * 0.2)));
+      clipEnd = Math.min(d, clipStart + CLIP);
+      if (Math.abs(player.getCurrentTime() - clipStart) > 2) player.seekTo(clipStart, true);
+    }
+    $('record').classList.add('spin'); setStatus('מתנגן…'); startTicker();
+  } else {
+    $('record').classList.remove('spin'); stopTicker();
+    if (e.data === S.PAUSED && everPlayed) setStatus('נעצר');
+    if (e.data === S.ENDED) setStatus('השיר נגמר');
+  }
+}
+function startTicker(){
+  stopTicker();
+  ticker = setInterval(() => {
+    const t = player.getCurrentTime();
+    setBar((t - clipStart) / (clipEnd - clipStart));
+    if (t >= clipEnd){ player.pauseVideo(); setStatus('נגמר הקטע — מה השנה?'); }
+  }, 250);
+}
+function stopTicker(){ if (ticker) clearInterval(ticker); ticker = null; }
+function setBar(f){ $('bar').style.width = Math.max(0, Math.min(1, f)) * 100 + '%'; }
+function setStatus(t){ $('status').textContent = t; }
+function enable(on){ ['playBtn','replayBtn','moreBtn','pauseBtn'].forEach(id => $(id).disabled = !on); }
+
+$('playBtn').onclick = () => {
+  if (!player) return;
+  if (everPlayed && player.getCurrentTime() >= clipEnd - 0.3) player.seekTo(clipStart, true);
+  player.playVideo();
+  setTimeout(() => { if (player.getPlayerState() !== YT.PlayerState.PLAYING)
+    setStatus('הקישו ישירות על התקליט כדי להתחיל'); }, 1500);
+};
+$('replayBtn').onclick = () => { if (!player) return; player.seekTo(clipStart, true); player.playVideo(); };
+$('moreBtn').onclick = () => {
+  if (!player) return;
+  clipEnd = Math.min(player.getDuration() || clipEnd + 15, clipEnd + 15); player.playVideo();
+};
+$('pauseBtn').onclick = () => player && player.pauseVideo();
+$('revealBtn').onclick = () => { $('answer').style.display = 'block'; };
+
+function goTo(n){
+  n = parseInt(n, 10);
+  if (!BY_N[n]) { setStatus('אין קלף כזה'); return; }
+  if (player && player.stopVideo) player.stopVideo();
+  history.replaceState(null, '', '#' + n);
+  startGame(n);
+}
+$('goBtn').onclick = () => goTo($('numIn').value);
+$('numIn').addEventListener('keydown', e => { if (e.key === 'Enter') goTo($('numIn').value); });
+
+/* ---------- in-page QR scanner (keeps one tab, audio stays unlocked) ---------- */
+let stream = null, scanning = false;
+function cardFromText(t){
+  const m = String(t).match(/[#?&]n?=?(\d{1,3})\s*$/) || String(t).match(/(\d{1,3})\s*$/);
+  return m ? parseInt(m[1], 10) : null;
+}
+async function getDecoder(){
+  if ('BarcodeDetector' in window){
+    try { const bd = new BarcodeDetector({formats:['qr_code']});
+      return async v => { const r = await bd.detect(v); return r[0] && r[0].rawValue; }; } catch(e){}
+  }
+  if (!window.jsQR) await new Promise((res, rej) => { const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js'; s.onload = res; s.onerror = rej; document.head.appendChild(s); });
+  const c = document.createElement('canvas'), x = c.getContext('2d', {willReadFrequently:true});
+  return async v => { c.width = v.videoWidth; c.height = v.videoHeight; if (!c.width) return null;
+    x.drawImage(v, 0, 0); const d = x.getImageData(0, 0, c.width, c.height); const r = jsQR(d.data, c.width, c.height); return r && r.data; };
+}
+async function openScanner(){
+  try{
+    stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});
+  } catch(e){ setStatus('אין גישה למצלמה — אפשר לסרוק עם אפליקציית המצלמה או להקליד מספר'); return; }
+  if (player && player.pauseVideo) player.pauseVideo();
+  $('scanner').style.display = 'flex'; const v = $('cam'); v.srcObject = stream; await v.play();
+  const decode = await getDecoder(); scanning = true;
+  const loop = async () => {
+    if (!scanning) return;
+    try { const txt = await decode(v); const n = txt && cardFromText(txt);
+      if (n && BY_N[n]) { closeScanner(); goTo(n); return; } } catch(e){}
+    setTimeout(loop, 250);
+  };
+  loop();
+}
+function closeScanner(){ scanning = false; $('scanner').style.display = 'none'; if (stream) stream.getTracks().forEach(t => t.stop()); stream = null; }
+$('scanBtn').onclick = openScanner; $('scanClose').onclick = closeScanner;
+
+/* ---------- test page ---------- */
+async function runTests(){
+  $('testStart').disabled = true; await loadYT();
+  const rows = []; SONGS.slice().sort((a,b)=>a.y-b.y).forEach(s => s.v.forEach((v,i) => rows.push({s, v, i})));
+  const body = $('testBody'); body.innerHTML = '';
+  rows.forEach(r => { const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${r.s.n}</td><td>${r.s.y}</td><td>${r.s.t}</td><td>${r.s.a}</td>
+      <td><a href="https://youtu.be/${r.v}" target="_blank" style="color:var(--cyan)">${r.i ? 'חלופי' : 'ראשי'}</a></td><td class="wait">…</td>`;
+    r.cell = tr.lastElementChild; body.appendChild(tr); });
+  let tp, current, resolveOne;
+  await new Promise(res => { tp = new YT.Player('testyt', {playerVars:{...PV, mute:1, autoplay:1},
+    events:{onReady:res,
+      onStateChange:e => { if (e.data === YT.PlayerState.PLAYING && resolveOne) resolveOne('ok'); },
+      onError:e => resolveOne && resolveOne('err ' + e.data)}}); });
+  let bad = 0;
+  for (const r of rows){
+    current = r;
+    const res = await new Promise(res => { resolveOne = res; tp.mute(); tp.loadVideoById(r.v); setTimeout(() => res('timeout'), 9000); });
+    resolveOne = null; tp.stopVideo();
+    r.cell.textContent = res === 'ok' ? '✓' : '✗ ' + res; r.cell.className = res === 'ok' ? 'ok' : 'bad';
+    if (res !== 'ok') bad++;
+  }
+  // per-song verdict: a song fails only if all its videos fail
+  const failedSongs = SONGS.filter(s => rows.filter(r => r.s === s).every(r => r.cell.className === 'bad'));
+  $('testSummary').textContent = `נבדקו ${rows.length} סרטונים, ${bad} נכשלו. שירים ללא אף מקור עובד: ` +
+    (failedSongs.length ? failedSongs.map(s => '#' + s.n + ' ' + s.t).join(', ') : 'אין 🎉');
+}
+$('testStart').onclick = runTests;
+
+/* ---------- boot ---------- */
+function boot(){
+  const c = parseCard();
+  if (c === 'test'){ $('game').style.display = 'none'; $('test').style.display = 'block'; $('cardno').textContent = 'בדיקה'; return; }
+  $('game').style.display = ''; $('test').style.display = 'none';
+  if (c) startGame(c);
+  else { $('cardno').textContent = 'אין קלף'; setStatus('סרקו קלף או הקלידו את מספרו'); $('revealBtn').disabled = true; }
+}
+window.addEventListener('hashchange', boot);
+boot();
+</script>
+</body>
+</html>
